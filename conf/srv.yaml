@@ -1,0 +1,5 @@
+--- 
+rootdir: '/Users/nefer/TOMTOM/F5/scripts/SOCKETS/www'
+servername: 'Nginx'
+hash:
+  a: '1'
