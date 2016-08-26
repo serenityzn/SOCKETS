@@ -3,19 +3,40 @@
 import socket
 import time
 import thread
+import sys
+import os
+# Custom import
+import parser
+import config
 
 thread_count = 1
 all_sockets = []
+server_config = []
 
 def communication(clsock, clip):
     res = 0
     message = clsock.recv(1024)
     if  message: 
-        clsock.send("Test socket server >" + message + "\n")
-#        clsock.send(message + "\n")
-        print "<-RQUEST === [ " + str(message) + " ]"
-#    clsock.send("HTTP/1.0 200 OK\nServer: Test Web\nCache-Control: private\nContent-Type: text/html; charset=UTF-8\nLocation: http://127.0.0.1:1234\nContent-Length: 13\nDate: Thu, 25 Aug 2016 16:48:09 GMT\nConnection: close\n\nHello World!\n")
-   # print "->RESPOND " + str(flag)
+        #clsock.send("Test socket server >" + message + "\n")
+        print "<-RQUEST === [ " + str( message ) + " ]"
+        
+        ( request_lines, request_error_code ) = parser.get_lines( message )
+        if request_error_code == 0:
+            ( req_method, req_uri, req_http_ver ) = parser.get_main_params( request_lines[0] )
+            if req_method == "HEAD":
+                if os.path.exists(server_config["rootdir"] + req_uri) == True:
+                    clsock.send(req_http_ver + " 200 OK\r\nServer: pserver/0.0.1\r\nContent-Length: 12\r\n\r\n")
+                    print "-> RESPOND === [ " + req_http_ver + " 200 OK\r\nServer: pserver/0.0.1\r\nContent-Length: 12\r\n ]"
+                else:
+                    clsock.send(req_http_ver + "404 Not Found\r\nContent-Type: text/html; charset=UTF-8\r\nContent-Length: 17\r\n\r\nPage Not Found!\r\n")
+                    print("-> RESPOND === [ " + req_http_ver + "404 Not Found\r\nContent-Type: text/html; charset=UTF-8\r\nContent-Length: 17\r\n\r\n")
+            elif req_method == "GET":
+                if os.path.exists(server_config["rootdir"] + req_uri) == True:
+                    clsock.send(req_http_ver + " 200 OK\r\nServer: pserver/0.0.1\r\nContent-Length: 12\r\n\r\nHello World!\r\n")
+                    print( "-> RESPOND === [ " + req_http_ver + " 200 OK\r\nServer: pserver/0.0.1\r\nContent-Length: 12\r\n\r\nHello World!\r\n ]" )
+                else:
+                    clsock.send(req_http_ver + "404 Not Found\r\nContent-Type: text/html; charset=UTF-8\r\nContent-Length: 17\r\n\r\nPage Not Found!\r\n")
+                    print("-> RESPOND === [ " + req_http_ver + "404 Not Found\r\nContent-Type: text/html; charset=UTF-8\r\nContent-Length: 17\r\n\r\nPage Not Found!\r\n")
 
         if message[:5] == "/exit":
             clsock.close()
@@ -35,12 +56,12 @@ def communication(clsock, clip):
 def cl_socket_thread( thread_name, client_socket, client_address):
     global thread_count
     print "[" + thread_name + "]> Get connection from " + str(client_address) + "\n"
-    client_socket.send("Thank you for conneting to Test socket server! \n")
-    client_socket.send("Please enter your input.\n")
+    #client_socket.send("Thank you for conneting to Test socket server! \n")
+    #client_socket.send("Please enter your input.\n")
     while True:
         if client_socket:
-            print "THIS IS CLIENT SOCKET"
-            print " = " + str(client_socket)
+            #print "THIS IS CLIENT SOCKET"
+            #print " = " + str(client_socket)
             if communication( client_socket, client_address ) == 1:
                 thread_count -= 1
                 break
@@ -55,6 +76,9 @@ def open_conn(ip, port, num):
 def main():
     global thread_count
     global all_sockets
+    global server_config
+
+    server_config = config.read_conf()
 
     listen_ip = "127.0.0.1"
     listen_port = 1234
